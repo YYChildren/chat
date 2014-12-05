@@ -14,7 +14,7 @@
 -compile(export_all).
 
 
--define(TCP_OPTIONS, [list, {packet, 0}, {active, false}, {reuseaddr, true},{nodelay, false},{delay_send, true}]).  
+-define(TCP_OPTIONS, [list, {packet, 4}, {active, false}, {reuseaddr, true},{nodelay, false},{delay_send, true}]).  
 
 %%状态表
 
@@ -37,7 +37,7 @@ init(State) ->
     
     %%启动数据库
     chat_db:start(),
-    io:format("Database is started!~n"),
+    io:format("~p Database is started!~n",[?MODULE]),
 
     %%维护队列 
     register(State#state.loop, spawn(fun() -> (State#state.name):(State#state.loop)() end)),
