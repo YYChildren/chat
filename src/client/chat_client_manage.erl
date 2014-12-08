@@ -29,21 +29,29 @@ init(Number) ->
 	
 	do_start_manage(NumberPType,Types).
 
-
+	
+do_start_manage(_Number,0) ->
+	all_finished;
 do_start_manage(Number,Typeth) -> 
 	%%创建用户进程
 	%% Typeth 表示第Typeth种
-	spawn(?MODULE,manage_client,[ Number,Typeth ]),
-	do_start_manage(Number,Typeth -1);
-do_start_manage(Number,0) ->
-	all_finished.
+	%% spawn(?MODULE,manage_client,[ Number,Typeth ]),
+	spawn( fun() -> manage_client(  Number,Typeth )  end),
+	
+	
+	timer:sleep(2000),
+	do_start_manage(Number,Typeth -1).
+
 
 manage_client(0, Typeth) ->
-	output(lists:concat( "Type: " ,Typeth ," finieshed"  ));
+	output(lists:concat( ["Type: " ,Typeth ," finished" ] ));
 manage_client(Number,Typeth) ->
+%% 	spawn( ?CLIENT, ?FUN , 
+%% 		   [ ?IP, ?PORT, integer_to_list(Number * Typeth), integer_to_list(Number * Typeth),
+%% 			 erlang:element(Typeth, ?TYPE)] ),
 	spawn( ?CLIENT, ?FUN , 
 		   [ ?IP, ?PORT, integer_to_list(Number * Typeth), integer_to_list(Number * Typeth),
-			 erlang:element(Typeth, ?TYPE)] ),
+			 erlang:element(1, ?TYPE)] ),
 	%% erlang:element(Typeth, ?TYPE)] 这是第Typeth种类型
 	output( lists:concat(["Client:",Number," Type: ", erlang:element(Typeth, ?TYPE) ]  ) ),
 	manage_client( Number - 1, Typeth ).

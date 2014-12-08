@@ -65,6 +65,7 @@ remove_user(UserName) ->
 reset_tables() ->
     mnesia:clear_table(user),
     mnesia:clear_table(channel),
+	init_user(),
     init_channel().
 
 init_channel() ->
@@ -72,10 +73,21 @@ init_channel() ->
         foreach(fun mnesia:write/1, channel_tables())
     end,
     mnesia:transaction(F).
+init_user()->
+	F = fun() ->
+        foreach(fun mnesia:write/1, user_example_tables())
+    end,
+	mnesia:transaction(F).
+
+user_example_tables() ->
+	[
+	 {user,"example1","example1"},
+	 {user,"example2","example2"}
+	 ].
 
 channel_tables() ->
     [
-     {channel, "world",     true,   10 },
+     {channel, "world",     true,   3 },
      {channel, "country1",  false,  0  },
      {channel, "country2",  false,  0  },
      {channel, "country3",  false,  0  }
