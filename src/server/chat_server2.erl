@@ -82,37 +82,11 @@ do_accept(State) ->
     case gen_tcp:accept(State#state.socket) of
         {ok, Socket} -> 
             %%创建进程处理响应
-            spawn(fun() -> handle_client(State,Socket) end),
+			ClientName = common_name:get_name(  client_socket,Socket ),
+			client_server:start( ClientName,Socket ),
             %%创建新连接,持久化
-            State#state.loop ! {connect, Socket},
-            do_accept(State);
+            State#state.loop ! { connect, Socket };
         _ ->
             ok
-    end. 
-                                 
-
-handle_client(State,Socket) ->
-	TableID = request_ets(State#state.loop),
-	io:format("~p ~n", [TableID]),
-	loop_client(TableID,State,Socket).
-
-request_ets( Pid ) ->
-	Pid ! { request_ets,self() },
-	receive
-		{ reply_ets, TableID }  ->
-			TableID;
-		_ ->
-			%% 循环请求Table
-			request_ets( Pid )
-	end.
-
-loop_client(TableID,State,Socket) ->
-    case gen_tcp:recv(Socket, 0) of
-        {ok, Data} ->
-			%% player进程 这里不要并发，一个palyer 登录  -》 发言本来就是串行的
-			io:format("~p ~p ~p ~p ~p ~n", [?MODULE,TableID,Socket,Data,State]),
-			(State#state.chat_client)(TableID,Socket,Data),
-            loop_client(TableID,State,Socket);
-        {error, _} ->
-            State#state.loop ! {disconnect, Socket}
-    end.
+    end,
+	do_accept(State). 

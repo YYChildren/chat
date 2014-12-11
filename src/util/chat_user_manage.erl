@@ -16,6 +16,7 @@ res_or_login(UserName,PassWord) ->
 					ok;
 				false -> 
 					io:format("~p OldUser with wrong password~n",[?MODULE]),
+					
 					exist
 			end
 	end.

@@ -42,6 +42,7 @@ foreach_key(Tab,Fun) ->
 do_foreach_key(_Tab, '$end_of_table' , _ ) ->
 	ok;
 do_foreach_key(Tab,  Idx ,Fun ) ->
+	%% 可改成并发的
 	Fun( Idx ),
 	do_foreach_key(Tab, ets:next(Tab, Idx),  Fun ).
 
