@@ -1,14 +1,9 @@
 -module(chat_server3).
-
 -behaviour(gen_server).
-
 -export([start/1,stop/1]).
 
 %% gen_server回调
-
--export([init/1,handle_call/3,handle_cast/2,handle_info/2,
-
-         terminate/2,code_change/3]).
+-export([init/1,handle_call/3,handle_cast/2,handle_info/2,terminate/2,code_change/3]).
 
 -compile(export_all).
 
@@ -32,6 +27,8 @@ process_msg( ServerRef, Socket,Player,Data ) ->
 do_connect(ServerRef, Socket ) ->
 	gen_server:call(ServerRef, {connect,Socket}).
 
+disconnect(Socket) ->
+	ok.
 
 
 %%停止服务

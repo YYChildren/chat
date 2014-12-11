@@ -9,17 +9,18 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start/2]).
+-export([start/2,stop/1]).
 
 
 start(ClientName,Socket) ->
-	gen_server:start_link({local,ClientName},?MODULE,Socket,[]).
+	gen_server:start_link({local,ClientName},?MODULE,{ClientName,Socket},[]).
+stop(ClientName) ->
+	gen_server:call(ClientName,stop).
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
--record(state, {socket,player = null} ).
--record(player, {name,zone="world",time=none}).
+-record(state, {client,socket} ).
 %% init/1
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:init-1">gen_server:init/1</a>
@@ -32,8 +33,8 @@ start(ClientName,Socket) ->
 	State :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-init( Socket ) ->
-	State = #state{socket = Socket},
+init( {ClientName,Socket} ) ->
+	State = #state{client = ClientName,socket = Socket},
 	chat_interface:tell_connnect(Socket),
 	spawn( fun() -> loop(State) end ),
     {ok, State}.
@@ -44,11 +45,11 @@ loop(State) ->
         {ok, Data} ->
 			%% player进程 这里不要并发，一个palyer 登录  -》 发言本来就是串行的
 			io:format("~p ~p ~p ~n", [?MODULE,State,Data] ), 
-			Player = chat3:send( State#state.socket,State#state.player,Data),
-            loop(State#state{ player = Player } );
+			chat_interface:send( State#state.socket,Data),
+            loop(State);
         {error, _} ->
-			ok
-%%             State#state.loop ! {disconnect, Socket}
+			chat_interface:disconnect(State#state.socket),
+			stop( State#state.client )
     end.
 
 %% handle_call/3
@@ -68,6 +69,8 @@ loop(State) ->
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
 %% ====================================================================
+handle_call(stop,_From,State) ->
+    {stop,normal,stopped,State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
