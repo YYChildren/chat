@@ -40,6 +40,10 @@ demo(select_user,UserName) ->
     do(qlc:q([X || X <- mnesia:table(user),
                     X#user.username =:=  UserName 
         ])).
+%% demo( Tab ,Fields,Value ) ->
+%% 	do(qlc:q([X || X <- mnesia:table(Tab),
+%%                     X#Tab.Fields =:=  Value 
+%%         ])).
 
 
 

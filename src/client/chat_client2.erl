@@ -55,11 +55,9 @@ do_chat(Socket,Type,Size) ->
 	output(Type1),
 	
 	%% switch_channel(Socket, erlang:element(Type1, ?ZONE)),
-	% do_recv_data(Socket),
 	%% 并发进程导致ets的tab_to_list有不同备份
-	timer:sleep(4000),
+	timer:sleep(10000),
 	send_msg(Socket,"Msg"),
-	% do_recv_data(Socket),
 	do_chat(Socket,Type1 + 1,Size).
 	
 switch_channel(Socket,Channel) ->

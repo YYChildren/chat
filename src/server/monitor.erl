@@ -18,3 +18,4 @@
 
 monitor( Node ) ->
 	rpc:call(Node, chat2, client_count, []).
+	
