@@ -64,6 +64,7 @@ handle_call({add,Record} ,_From,State) ->
 	Reply = ets:insert(Tab, Record),
 	{reply, Reply, State};
 handle_call( {del,Key}, _From, State)->
+	io:format("~p ~p ~n",[?MODULE,?LINE]),
 	Tab = State#state.table,
 	Reply = ets:delete(Tab, Key),
 	{reply, Reply, State};

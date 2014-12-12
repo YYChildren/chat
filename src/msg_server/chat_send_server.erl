@@ -9,7 +9,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start/2,send/4,switch_channel/4]).
+-export([start/2,send/4,add_record/3,del_record/3,switch_channel/4,remove_record/2]).
 
 start(Name,Channels) -> 
     gen_server:start_link({local,Name},?MODULE,Channels,[]).
@@ -19,6 +19,9 @@ add_record(ServerRef, Zone, Socket) ->
 	gen_server:call(ServerRef,   {add,Zone,Socket} ).
 del_record( ServerRef, Zone, Socket) ->
 	gen_server:call(ServerRef,   {del,Zone,Socket}  ).
+remove_record( ServerRef, Socket) ->
+	io:format("~p ~p ~n",[?MODULE,?LINE]),
+	gen_server:call(ServerRef, {remove_record,Socket}).
 switch_channel( ServerRef, Socket,OldZone,Zone) -> 
 %% 	OldZone = Player#player.zone,
 	case OldZone =:= Zone of 
@@ -48,15 +51,14 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 							ok
 					end
 			end
-	end,
-	chat_send_per_server:switch_channel(ServerRef, Zone).
+	end.
 			
 
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
--record(state, {}).
+-record(state, {table_pids}).
 % -record(player, {name,zone="world",time=none}).
 
 %% init/1
@@ -72,16 +74,18 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init( Channels ) ->
-	create_tab_server( Channels ),
-    {ok, #state{}}.
-create_tab_server( [] ) ->
-	ok;
-create_tab_server(Channels) ->
+	%%设成系统进程，不让子进程关闭
+    erlang:process_flag(trap_exit, true),
+	TablePids = create_tab_server( Channels,[]),
+    {ok, #state{table_pids = TablePids}}.
+create_tab_server( [],TablePids ) ->
+	TablePids;
+create_tab_server(Channels,TablePids) ->
 	[ {channel,Zone,_Public, _Timeout} | Others ] = Channels,
 	Table = common_name:get_name(table, Zone),
 	TablePid = common_name:get_name(table_pid, Zone),
 	chat_tab_server:start( TablePid  ,  Table ),
-	create_tab_server(Others).
+	create_tab_server(Others,[TablePid | TablePids]).
 
 %% handle_call/3
 %% ====================================================================
@@ -104,7 +108,7 @@ handle_call(  {send,Socket, Player, Data} ,  _From,  State) ->
 	SendRegName = common_name:get_name(  send_socket,Socket ),
 	case erlang:whereis(  SendRegName ) of
 		undefined -> 
-			chat_send_per_server:start( SendRegName,Player),
+			chat_send_per_server:start( SendRegName),
 			chat_send_per_server:send( SendRegName , Player, Data);
 		_ ->
 			chat_send_per_server:send( SendRegName , Player, Data)
@@ -119,10 +123,21 @@ handle_call( {del,Zone,Socket},  _From,  State ) ->
 	TablePid = common_name:get_name(table_pid, Zone),
 	Reply = chat_tab_server:del_record( TablePid,Socket ),
 	{reply, Reply, State};
+handle_call( {remove_record,Socket},_From,State ) ->
+	io:format("~p ~p ~n",[?MODULE,?LINE]),
+	TablePids = State#state.table_pids,
+	Reply = do_remove_record(TablePids,Socket),
+	{reply, Reply, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+do_remove_record([],Socket) ->
+	{removed,Socket};
+do_remove_record(TablePids,Socket) ->
+	[TablePid | Others] = TablePids,
+	chat_tab_server:del_record( TablePid,Socket ),
+	do_remove_record(Others,Socket).
 
 %% handle_cast/2
 %% ====================================================================

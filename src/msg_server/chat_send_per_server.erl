@@ -9,20 +9,18 @@
 %% ====================================================================
 %% API functions   Socket和Player应该不用
 %% ====================================================================
--export([start/3,send/3,switch_channel/2]).
+-export([start/1,send/3]).
 
 
-start(Name,Socket,Player) -> 
-    gen_server:start_link({local,Name},?MODULE, {Socket,Player},[] ).
+start(Name) -> 
+    gen_server:start_link({local,Name},?MODULE, {},[] ).
 send( ServerRef,Player,Data ) ->
 	gen_server:call(ServerRef,  {send,Player,Data} ).
-switch_channel( ServerRef,Zone) ->
-	gen_server:call(ServerRef,  {swicth_channel,Zone} ).
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
--record(state,{server_name,socket,player}).
+-record(state,{}).
 -record(player, {name,zone="world",time=none}).
 %% init/1
 %% ====================================================================
@@ -36,8 +34,8 @@ switch_channel( ServerRef,Zone) ->
 	State :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-init( {Socket,Player} ) ->
-	State = #state{ socket=Socket,player=Player},
+init( {} ) ->
+	State = #state{},
     { ok, State }.
 
 
@@ -58,19 +56,13 @@ init( {Socket,Player} ) ->
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
 %% ====================================================================
-handle_call( {switch_channel,Zone},_From,State) ->
-	Player = State#state.player,
-	Reply = Player#player.zone,
-	NewState = State#state{ player = Player#player{zone = Zone} },
-    {reply, Reply, NewState};
 handle_call( {send,Player,Data} ,_From,State) ->
 	Zone = Player#player.zone,
 	UserName = Player#player.name,
 	Table = common_name:get_name( table, Zone),
 	Package=[ lists:concat(  [ Zone,"->",UserName,": ",Data]) ] ,
 	Reply = ets_handler:foreach_key( Table , fun(Socket) -> gen_tcp:send(Socket, Package) end),
-	NewState = State#state{ player = Player},
-    {reply, Reply, NewState};
+    {reply, Reply, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.

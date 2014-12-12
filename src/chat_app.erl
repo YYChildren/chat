@@ -9,7 +9,6 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([]).
 
 
 
@@ -26,7 +25,7 @@
 	| {error, Reason :: term()}.
 %% ====================================================================
 start(Type, StartArgs) ->
-    case 'TopSupervisor':start_link(StartArgs) of
+    case chat_sup:start_link(StartArgs) of
 		{ok, Pid} ->
 			{ok, Pid};
 		Error ->
