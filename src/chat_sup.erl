@@ -5,7 +5,8 @@
 -module(chat_sup).
 -behaviour(supervisor).
 -export([init/1]).
-
+-define(PORT,8080).
+-define(TCP_OPTIONS, [list, {packet, 4}, {active, false}, {reuseaddr, true},{nodelay, false},{delay_send, true}]).  
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -43,15 +44,51 @@ start_link(Args) ->
 	Modules :: [module()] | dynamic.
 %% ====================================================================
 init([]) ->
-    AChild ={tag1, 
-	    {chat_server3, start, []},
+    ChatServer ={chat_server3, 
+	    {chat_server3, start, [ chat_server3 ]},
 	    permanent, 
 	    10000, 
 	    worker, 
 	    [chat_server3]},
-
-    {ok,{{one_for_all,0,1}, [AChild]}}.
-
+	AcceptClient = {accep_client, 
+	    {accept_client, accept, [ accep_client,?PORT,?TCP_OPTIONS ]},
+	    permanent, 
+	    10000, 
+	    worker, 
+	    []},
+	SendServer = {chat_send_server, 
+	    {chat_send_server, start, [ chat_send_server ]},
+	    permanent, 
+	    10000, 
+	    worker, 
+	    []},
+	ReceiveClientSupervisor ={receive_client_sup, 
+	    {receive_clinet_sup, start_link, []},
+	    permanent, 
+	    10000, 
+	    supervisor, 
+	    [receive_clinet_sup]},
+	SendClientSupervisor ={send_client_sup, 
+	    {receive_clinet_sup, start_link, []},
+	    permanent, 
+	    10000, 
+	    supervisor, 
+	    [send_clinet_sup]},
+	ChatTabSupervisor ={chat_tab_sup, 
+	    {chat_tab_server, start_link, []},
+	    permanent, 
+	    10000, 
+	    supervisor, 
+	    [chat_tab_sup]},
+	{ok, {{one_for_one, 3, 10},
+		  [ChatServer,
+		   AcceptClient,
+		   SendServer,
+		   ReceiveClientSupervisor,
+		   SendClientSupervisor,
+		   SendClientSupervisor,
+		   ChatTabSupervisor
+		  ]}}.
 %% ====================================================================
 %% Internal functions
 %% ====================================================================

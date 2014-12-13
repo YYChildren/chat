@@ -12,9 +12,7 @@
 -define(TCP_OPTIONS, [list, {packet, 4}, {active, false}, {reuseaddr, true},{nodelay, false},{delay_send, true}]).  
 
 %%状态表
-
-%% -record(state, {name,loop,socket}).
--record( state,{table,lsocket} ).
+-record( state,{table} ).
 -record(player, {name,zone="world",time=none}).
 
 
@@ -48,8 +46,7 @@ disconnect(ServerRef,Socket) ->
 stop(Name)  -> 
     gen_server:call(Name,stop),
 	%%等待所有连接断开
-    timer:sleep(2000),
-    manage_clients ! {exit}.
+    timer:sleep(2000).
 
 
 init( [] ) -> 
@@ -58,55 +55,13 @@ init( [] ) ->
     %%启动数据库
     chat_db:start(),
     io:format("~p Database is started!~n",[?MODULE]),
-	
 	%%MSG server
 	chat_send_server:start( ?MSG_SERVER, chat_channel_manage:load_channel() ),
-    
 	%%维护队列
 	ets:new(user_in_mem,[set,public,named_table]),
-    
 	%%默认8080
-    {Tag, LSocket}=gen_tcp:listen(8080, ?TCP_OPTIONS),
-	State = #state{ table=user_in_mem,lsocket=LSocket },
-    %%创建监听
-    case Tag of
-        ok ->
-            %%统一接收Z
-			AcceptProName = chat_server3_accept,
-            register(AcceptProName , spawn_link(fun() -> do_accept( State ) end));
-        error ->
-            %%出错，退出连接
-            exit({stop, exit})                               
-    end,
+	State = #state{ table=user_in_mem},
     {ok,State}.
-
-%%新建连接,只有新连接时才调用
-do_accept(State) ->
-    case gen_tcp:accept(State#state.lsocket) of
-        {ok, Socket} -> 
-            %%创建进程处理响应
-			io:format("Socket ~p connected~n",[ Socket]),
-			ClientName = common_name:get_name(  client_socket,Socket ),
-			chat_server3:connect(Socket),
-			io:format("~p Client: ~p~n", [?MODULE,ClientName]),
-			%% client_server:start( ClientName,Socket );
-			register(ClientName,spawn_link(fun() -> receive_client(Socket)end));
-        _ ->
-            ok
-    end,
-	do_accept(State). 
-receive_client(Socket) ->
-    case gen_tcp:recv(Socket, 0) of
-        {ok, Data} ->
-			%% player进程 这里不要并发，一个palyer 登录  -》 发言本来就是串行的
-			chat_server3:send(Socket,Data),
-			receive_client(Socket);
-        {error, Why} ->
-			io:format("~p~n~n",[Why]),
-			chat_server3:disconnect(Socket)
-    end.
-
-
 handle_call({msg,  Socket,Data  },_From,State) ->
 	io:format("call~n"),
 	Reply = chat_client(State,Socket,Data),
