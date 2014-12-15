@@ -7,8 +7,9 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export( [accept/3] ).
-
+-export( [ accept/3  ] ).
+-define(CHAT_SERVER,chat_server3).
+-define(RECEIVE_CLIENT_SUP,receive_client_sup).
 
 
 %% ====================================================================
@@ -24,7 +25,7 @@ accept(AcceptProName,Port,TcpOptions)->
             register(AcceptProName , spawn_link(fun() -> do_accept( LSocket ) end));
         error ->
             %%出错，退出连接
-            exit({stop, exit})                               
+            exit({stop, exit}) 
     end.
 do_accept(LSocket) ->
     case gen_tcp:accept(LSocket) of
@@ -32,10 +33,9 @@ do_accept(LSocket) ->
             %%创建进程处理响应
 			io:format("Socket ~p connected~n",[ Socket]),
 			ClientName = common_name:get_name(  client_socket,Socket ),
-			chat_server3:connect(Socket),
+			?CHAT_SERVER:connect(Socket),
+			supervisor:start_child(?RECEIVE_CLIENT_SUP,[Socket,ClientName]),
 			io:format("~p Client: ~p~n", [?MODULE,ClientName]);
-			%% client_server:start( ClientName,Socket );
-			%% register(ClientName,spawn_link(fun() -> receive_client(Socket)end));
         _ ->
             ok
     end,

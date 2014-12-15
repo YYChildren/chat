@@ -19,7 +19,8 @@ do_this_once() ->
 start() ->
     mnesia:start(),
     mnesia:wait_for_tables([user], 20000),
-    mnesia:wait_for_tables([channel], 20000).
+    mnesia:wait_for_tables([channel], 20000),
+	io:format("~p Database is started!~n",[?MODULE]).
 
 stop() ->
     mnesia:stop().

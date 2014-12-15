@@ -2,22 +2,23 @@
 %% @doc @todo Add description to chat_send_per_server.
 
 
--module(chat_send_per_server).
+-module(send_client_server).
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 %% ====================================================================
 %% API functions   Socket和Player应该不用
 %% ====================================================================
--export([start/1,send/3,stop/1]).
+-export([start_link/1,send/3,stop/1]).
 
 
-start(Name) -> 
+start_link([Name]) -> 
     gen_server:start_link({local,Name},?MODULE, {},[] ).
 send( ServerRef,Player,Data ) ->
-	gen_server:call(ServerRef,  {send,Player,Data} ).
+	erlang:send(ServerRef, {send,Player,Data}).
 stop(ServerRef)  -> 
     gen_server:cast(ServerRef,stop).
+
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================

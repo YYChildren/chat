@@ -5,7 +5,7 @@
 -module(send_client_sup).
 -behaviour(supervisor).
 -export([init/1]).
-
+-define(SEND_CLIENT_SERVER,send_client_server).
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -35,8 +35,8 @@ start_link(Args) ->
 %% ====================================================================
 init([]) ->
     Client = {
-			  call, {call, start_link, []}, 
-           temporary, brutal_kill, worker, [call]
+			  	?SEND_CLIENT_SERVER, {?SEND_CLIENT_SERVER, start_link, []}, 
+           		transient, brutal_kill, worker, [call]
 			 },
     {ok,{{simple_one_for_one,0,1}, [Client]}}.
 

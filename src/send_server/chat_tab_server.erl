@@ -9,15 +9,26 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start/2,add_record/2,del_record/2]).
+-export([start_link/1,add_record/2,del_record/2]).
 -define(OPTIONS, [ named_table, protected,set ] ).
 
-start(ProName,TabName) ->
-	gen_server:start_link({local,ProName},?MODULE,  { TabName,?OPTIONS } , []).
+start_link( [ProName,TabName] ) ->
+	gen_server:start_link({local,ProName},?MODULE,  TabName, []).
 add_record( ServerRef,Record ) ->
 	gen_server:call(ServerRef, {add,Record}).
 del_record(ServerRef,Key)	->
 	gen_server:call(ServerRef, { del,Key } ).
+%% child_spec(Id,Args) ->
+%% 	{
+%% 	 	Id, 
+%% 	    {chat_tab_server, start, Args},
+%% 	    transient, 
+%% 	    brutal_kill, 
+%% 	    worker, 
+%% 	    [ chat_tab_server ]
+%% 	}.
+
+
 
 %% ====================================================================
 %% Behavioural functions 
@@ -36,8 +47,8 @@ del_record(ServerRef,Key)	->
 	State :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-init({ TabName,Options}) ->
-	ets:new(TabName, Options),
+init( TabName ) ->
+	ets:new(TabName, ?OPTIONS),
     { ok, #state{ table = TabName } }.
 
 
@@ -131,5 +142,3 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-

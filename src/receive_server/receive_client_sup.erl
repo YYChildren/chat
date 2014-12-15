@@ -5,6 +5,7 @@
 -module(receive_client_sup).
 -behaviour(supervisor).
 -export([init/1]).
+-define(RECEIVE_CLIENT_SERVER,receive_client_server).
 
 %% ====================================================================
 %% API functions
@@ -35,8 +36,9 @@ start_link(Args) ->
 %% ====================================================================
 init([]) ->
     Client = {
-			  call, {call, start_link, []}, 
-           temporary, brutal_kill, worker, [call]
+			  	?RECEIVE_CLIENT_SERVER, 
+				{?RECEIVE_CLIENT_SERVER, receive_msg, []}, 
+           		temporary, brutal_kill, worker, []
 			 },
     {ok,{{simple_one_for_one,0,1}, [Client]}}.
 

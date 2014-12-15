@@ -4,6 +4,7 @@
 
 -module(chat_sup).
 -behaviour(supervisor).
+-include("info.hrl").
 -export([init/1]).
 -define(PORT,8080).
 -define(TCP_OPTIONS, [list, {packet, 4}, {active, false}, {reuseaddr, true},{nodelay, false},{delay_send, true}]).  
@@ -13,7 +14,7 @@
 -export([start_in_shell_for_testing/0,start_link/1,start/0]).
 start() ->
 	    spawn(fun() ->
-		  supervisor:start_link({local,?MODULE}, ?MODULE, _Arg = [])
+		  supervisor:start_link({local,?MODULE}, ?MODULE, _Arg = []) 
 	  end).
 start_in_shell_for_testing() ->
     {ok, Pid} = supervisor:start_link({local,?MODULE}, ?MODULE, _Arg = []),
@@ -50,6 +51,12 @@ init([]) ->
 	    10000, 
 	    worker, 
 	    [chat_server3]},
+	ChatDB = {chat_db, 
+	    {chat_db, start, []},
+	    permanent, 
+	    10000, 
+	    worker, 
+	    []},
 	AcceptClient = {accep_client, 
 	    {accept_client, accept, [ accep_client,?PORT,?TCP_OPTIONS ]},
 	    permanent, 
@@ -82,6 +89,7 @@ init([]) ->
 	    [chat_tab_sup]},
 	{ok, {{one_for_one, 3, 10},
 		  [ChatServer,
+		   ChatDB,
 		   AcceptClient,
 		   SendServer,
 		   ReceiveClientSupervisor,

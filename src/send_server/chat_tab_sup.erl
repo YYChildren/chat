@@ -5,6 +5,7 @@
 -module(chat_tab_sup).
 -behaviour(supervisor).
 -export([init/1]).
+-define(CHAT_TAB_SERVER,chat_tab_server).
 
 %% ====================================================================
 %% API functions
@@ -35,8 +36,8 @@ start_link(Args) ->
 %% ====================================================================
 init([]) ->
     Client = {
-			  call, {call, start_link, []}, 
-           temporary, brutal_kill, worker, [call]
+			  	?CHAT_TAB_SERVER, {?CHAT_TAB_SERVER, start_link, []}, 
+           		transient, brutal_kill, worker, [call]
 			 },
     {ok,{{simple_one_for_one,0,1}, [Client]}}.
 

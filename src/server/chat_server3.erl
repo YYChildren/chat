@@ -1,4 +1,5 @@
 -module(chat_server3).
+%% -include("info.hrl").
 -behaviour(gen_server).
 %% gen_server回调
 -export([init/1,handle_call/3,handle_cast/2,handle_info/2,terminate/2,code_change/3]).
@@ -33,13 +34,13 @@ start(Name) ->
     gen_server:start_link({local,Name},?MODULE,[],[]). 
 
 send( ServerRef, Socket,Data ) ->
-	gen_server:call(ServerRef, {msg,  Socket,Data  }).
+	ServerRef !  {msg,  Socket,Data  }.
 
 connect(ServerRef, Socket ) ->
-	gen_server:call(ServerRef, {connect,Socket}).
+	ServerRef !  {connect,Socket}.
 
 disconnect(ServerRef,Socket) ->
-	gen_server:call(ServerRef, {disconnect,Socket}).
+	ServerRef !  {disconnect,Socket}.
 
 
 %%停止服务
@@ -51,31 +52,14 @@ stop(Name)  ->
 
 init( [] ) -> 
 	%%设成系统进程，不让子进程关闭
-    erlang:process_flag(trap_exit, true),
-    %%启动数据库
-    chat_db:start(),
-    io:format("~p Database is started!~n",[?MODULE]),
-	%%MSG server
-	chat_send_server:start( ?MSG_SERVER, chat_channel_manage:load_channel() ),
+    erlang:process_flag(trap_exit, true),    
 	%%维护队列
 	ets:new(user_in_mem,[set,public,named_table]),
 	%%默认8080
 	State = #state{ table=user_in_mem},
     {ok,State}.
-handle_call({msg,  Socket,Data  },_From,State) ->
-	io:format("call~n"),
-	Reply = chat_client(State,Socket,Data),
-	{reply, Reply, State};
-handle_call({connect,Socket} , _From,State) ->
-	Tab = State#state.table,
-	Reply = ets:insert( Tab, {Socket,null} ),
-	{reply, Reply, State};
-handle_call({disconnect,Socket},_From,State) ->
-	Tab = State#state.table,
-	ets:delete(Tab, Socket),
-	io:format("~p ~p ~n",[?MODULE,?LINE]),
-	Reply = chat_send_server:remove_record(?MSG_SERVER, Socket),
-	{reply, Reply, State};
+
+
 handle_call(stop,_From,State) ->
     {stop,normal,stopped,State};
 handle_call(Request,_From,State) ->
@@ -88,6 +72,18 @@ handle_cast(stop,State) ->
 handle_cast(_Msg,State) ->
     {noreply,State}.
 
+handle_info({msg,  Socket,Data},State) ->
+	chat_client(State,Socket,Data),
+	{noreply, State};
+handle_info({connect,Socket},State) ->
+	Tab = State#state.table,
+	ets:insert( Tab, {Socket,null} ),
+	{noreply, State};
+handle_info({disconnect,Socket},State) ->
+	Tab = State#state.table,
+	ets:delete(Tab, Socket),
+	chat_send_server:remove_record(?MSG_SERVER, Socket),
+	{noreply, State};
 handle_info(_Info,State) ->
     {noreply,State}.
 
@@ -136,8 +132,7 @@ chat_client(State,Socket,Data) ->
 			                case chat_channel_manage:load_channel( Zone ) of
 			                    [ { channel,Zone,_Public ,_Timeout } ]  ->
 									%% 切换频道
-									switch_channel(TableID,Socket,Zone),
-									gen_tcp:send( Socket, [ lists:concat(  [ "switch to ", Zone ] ) ] );
+									switch_channel(TableID,Socket,Player1,Zone);
 								_ ->
 									send_data( TableID, Socket,Player1,Data )
  			                end;
@@ -150,47 +145,38 @@ chat_client(State,Socket,Data) ->
 			
 %% 登录或注册
 res_or_login( TableID,Socket,UserName,PassWord ) ->
-	case ets:lookup(TableID, Socket) of
-		[ { Socket, null  } ] ->
-		    case chat_user_manage:res_or_login(UserName,PassWord) of
-		        register ->
-					Player = #player{name=UserName,time=time_handler:timestamp() },
-		            ets:insert(TableID, { Socket,  Player}),
-					[ {channel, Zone ,_Public,_Timeout  } ] = chat_channel_manage:load_channel(  Player#player.zone  ),
-					%% 给MSG Server发送新增socket
-					chat_send_server:add_record(?MSG_SERVER, Zone, Socket),
-					register;
-		        ok       ->
-					Player = #player{name=UserName,time=time_handler:timestamp() },
-		            ets:insert(TableID, { Socket,  Player }),
-					[ {channel, Zone ,_Public,_Timeout  } ] = chat_channel_manage:load_channel(  Player#player.zone  ),
-					%% 给MSG Server发送新增socket
-					chat_send_server:add_record(?MSG_SERVER, Zone, Socket),
-		            ok;
-		        exist    ->
-					exist
-		    end;
-		_ ->
-			error
+    case chat_user_manage:res_or_login(UserName,PassWord) of
+        register ->
+			Player = #player{name=UserName,time=time_handler:timestamp() },
+            ets:insert(TableID, { Socket,  Player}),
+			[ {channel, Zone ,_Public,_Timeout  } ] = chat_channel_manage:load_channel(  Player#player.zone  ),
+			%% 给MSG Server发送新增socket
+			chat_send_server:add_record(?MSG_SERVER, Zone, Socket),
+			register;
+        ok       ->
+			Player = #player{name=UserName,time=time_handler:timestamp() },
+            ets:insert(TableID, { Socket,  Player }),
+			[ {channel, Zone ,_Public,_Timeout  } ] = chat_channel_manage:load_channel(  Player#player.zone  ),
+			%% 给MSG Server发送新增socket
+			chat_send_server:add_record(?MSG_SERVER, Zone, Socket),
+            ok;
+        exist    ->
+			exist
 	end.
 	
 %% 切换频道
-switch_channel(TableID,Socket,Zone) ->
-	case ets:lookup(TableID, Socket) of
-		%% 确保是该进程的动作
-		[ { Socket,Player1 } ] ->
+switch_channel(TableID,Socket,Player1,Zone) ->
+	%% 更改频道和时间戳
+	case Zone =:= Player1#player.zone of
+		true ->
+			gen_tcp:send( Socket, [ lists:concat(  [ "You are in ", Zone,". Don't have to switch" ] ) ] ),
+			ok;
+		false	->
+			Player = Player1#player{zone=Zone, time=time_handler:timestamp() },
+			ets:insert(TableID,  { Socket, Player } ),
 			chat_send_server:switch_channel( ?MSG_SERVER, Socket, Player1#player.zone, Zone),
-			%% 更改频道和时间戳
-			case Zone =:= Player1#player.zone of
-				true ->
-					ok;
-				false	->
-					Player = Player1#player{zone=Zone, time=time_handler:timestamp() },
-					ets:insert(TableID,  { Socket, Player } ),
-					switched
-			end;
-		_->
-			error
+			gen_tcp:send( Socket, [ lists:concat(  [ "switch to ", Zone ] ) ] ),
+			switched
 	end.
 
 send_data( TableID, Socket,Player,Data ) ->
