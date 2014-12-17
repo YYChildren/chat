@@ -7,11 +7,12 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([receive_msg/1]).
+-export([receive_msg/2]).
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-receive_msg( [Socket,ClientName] ) ->
+receive_msg( Socket,ClientName ) ->
+	io:format("~p ~p~n", [ ?MODULE,?LINE]),
 	register(ClientName, spawn_link( fun() -> do_receive_msg(Socket) end) ).
 do_receive_msg(Socket) ->
     case gen_tcp:recv(Socket, 0) of
@@ -20,7 +21,7 @@ do_receive_msg(Socket) ->
 			?CHAT_SERVER:send(Socket,Data),
 			do_receive_msg(Socket);
         {error, Why} ->
-			io:format("~p~n~n",[Why]),
-			chat_server3:disconnect(Socket)
+			io:format("Reason: ~p~n~n",[Why]),
+			?CHAT_SERVER:disconnect(Socket)
     end.
 

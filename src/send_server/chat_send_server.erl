@@ -20,14 +20,15 @@ start(Name) ->
 	start(Name,Channels).
 start(Name,Channels) -> 
     gen_server:start_link({local,Name},?MODULE,Channels,[]).
+
 send( ServerRef,Socket, Player, Data ) ->
-	ServerRef ! {send,Socket, Player, Data}.
+	erlang:send( ServerRef , {send,Socket, Player, Data} ).
 add_record(ServerRef, Zone, Socket) ->
-	ServerRef !  {add,Zone,Socket} .
+	erlang:send( ServerRef , {add,Zone,Socket} ).
 del_record( ServerRef, Zone, Socket) ->
-	ServerRef !  {del,Zone,Socket}.
+	erlang:send( ServerRef, {del,Zone,Socket}).
 remove_record( ServerRef, Socket) ->
-	ServerRef !  {remove_record,Socket}.
+	erlang:send(ServerRef ,  {remove_record,Socket}).
 switch_channel( ServerRef, Socket,OldZone,Zone) -> 
 %% 	OldZone = Player#player.zone,
 	case OldZone =:= Zone of 
@@ -143,7 +144,7 @@ handle_info(  {send,Socket, Player, Data} ,  State) ->
 	SendRegName = common_name:get_name(  send_socket,Socket ),
 	case erlang:whereis(  SendRegName ) of
 		undefined ->
-			supervisor:start_child(?SEND_CLIENT_SUP, [SendRegName]),
+			supervisor:start_child(?SEND_CLIENT_SUP, [SendRegName] ),
 			?SEND_CLIENT_SERVER:send( SendRegName , Player, Data);
 		_ ->
 			?SEND_CLIENT_SERVER:send( SendRegName , Player, Data)
@@ -163,7 +164,7 @@ handle_info( {remove_record,Socket},State ) ->
 	do_remove_record(TablePids,Socket),
 	%%关闭进程
 	SendRegName = common_name:get_name(  send_socket,Socket ),
-	?CHAT_TAB_SERVER:stop( SendRegName),
+	?SEND_CLIENT_SERVER:stop( SendRegName),
 	{noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.

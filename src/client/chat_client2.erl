@@ -54,10 +54,10 @@ do_chat(Socket,Type,Size) ->
 			end,
 	output(Type1),
 	
-	%% switch_channel(Socket, erlang:element(Type1, ?ZONE)),
+	switch_channel(Socket, erlang:element(Type1, ?ZONE)),
 	%% 并发进程导致ets的tab_to_list有不同备份
 	timer:sleep(10000),
-	send_msg(Socket,"Msg"),
+	send_msg(Socket,   binary_to_list( unicode:characters_to_binary(  "中文" ) )),
 	do_chat(Socket,Type1 + 1,Size).
 	
 switch_channel(Socket,Channel) ->
@@ -80,7 +80,7 @@ output(Msg) ->
 	io:format("~p Msg: ~p~n",[?MODULE,Msg]).
 
 outputServerMsg(Msg) ->
-	io:format("~p Msg From Server: ~p~n",[?MODULE,Msg]).
+	io:format("~p Msg From Server: ~tp~n",[?MODULE,Msg]).
 
 send_msg(Socket,Msg) ->
-	gen_tcp:send(Socket,Msg).
+	gen_tcp:send(Socket, Msg ).

@@ -22,7 +22,9 @@ accept(AcceptProName,Port,TcpOptions)->
 	case Tag of
         ok ->
             %%统一接收Z
-            register(AcceptProName , spawn_link(fun() -> do_accept( LSocket ) end));
+			Pid = spawn_link(fun() -> do_accept( LSocket ) end),
+            register(AcceptProName , Pid),
+			{ok,Pid};
         error ->
             %%出错，退出连接
             exit({stop, exit}) 
@@ -33,7 +35,7 @@ do_accept(LSocket) ->
             %%创建进程处理响应
 			io:format("Socket ~p connected~n",[ Socket]),
 			ClientName = common_name:get_name(  client_socket,Socket ),
-			?CHAT_SERVER:connect(Socket),
+			?CHAT_SERVER:connect(?CHAT_SERVER,Socket),
 			supervisor:start_child(?RECEIVE_CLIENT_SUP,[Socket,ClientName]),
 			io:format("~p Client: ~p~n", [?MODULE,ClientName]);
         _ ->

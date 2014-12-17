@@ -9,24 +9,16 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1,add_record/2,del_record/2]).
+-export([start_link/2,add_record/2,del_record/2]).
 -define(OPTIONS, [ named_table, protected,set ] ).
 
-start_link( [ProName,TabName] ) ->
+start_link( ProName,TabName ) ->
+	io:format("~p ~p ~n", [?MODULE ,?LINE ]),
 	gen_server:start_link({local,ProName},?MODULE,  TabName, []).
 add_record( ServerRef,Record ) ->
-	gen_server:call(ServerRef, {add,Record}).
+	erlang:send( ServerRef, {add,Record} ).
 del_record(ServerRef,Key)	->
-	gen_server:call(ServerRef, { del,Key } ).
-%% child_spec(Id,Args) ->
-%% 	{
-%% 	 	Id, 
-%% 	    {chat_tab_server, start, Args},
-%% 	    transient, 
-%% 	    brutal_kill, 
-%% 	    worker, 
-%% 	    [ chat_tab_server ]
-%% 	}.
+	erlang:send( ServerRef, { del,Key } ).
 
 
 
@@ -70,15 +62,6 @@ init( TabName ) ->
 	Reason :: term().
 %% ====================================================================
 
-handle_call({add,Record} ,_From,State) ->
-	Tab = State#state.table,
-	Reply = ets:insert(Tab, Record),
-	{reply, Reply, State};
-handle_call( {del,Key}, _From, State)->
-	io:format("~p ~p ~n",[?MODULE,?LINE]),
-	Tab = State#state.table,
-	Reply = ets:delete(Tab, Key),
-	{reply, Reply, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -110,6 +93,14 @@ handle_cast(_Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
+handle_info({add,Record},State) ->
+	Tab = State#state.table,
+	ets:insert(Tab, Record),
+	{noreply, State};
+handle_info( {del,Key}, State)->
+	Tab = State#state.table,
+	ets:delete(Tab, Key),
+	{noreply,State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
