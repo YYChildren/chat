@@ -83,7 +83,7 @@ init([]) ->
 	    10000, 
 	    worker, 
 	    []},
-	{ok, {{one_for_one, 3, 10},
+	{ok, {{one_for_one, 300, 1},
 		  [ChatServer,
 		   ReceiveClientSupervisor,
 		   SendClientSupervisor,

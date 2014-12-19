@@ -37,7 +37,7 @@ start_link(Args) ->
 init([]) ->
     Client = {
 			  	?CHAT_TAB_SERVER, {?CHAT_TAB_SERVER, start_link, []}, 
-           		transient, brutal_kill, worker, [call]
+           		transient, brutal_kill, worker, [?CHAT_TAB_SERVER]
 			 },
     {ok,{{simple_one_for_one,0,1}, [Client]}}.
 

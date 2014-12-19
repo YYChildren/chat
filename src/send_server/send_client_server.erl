@@ -9,15 +9,15 @@
 %% ====================================================================
 %% API functions   Socket和Player应该不用
 %% ====================================================================
--export([start_link/1,send/3,stop/1]).
+-export([start_link/1,send/4,stop/1]).
 
 
 start_link( Name ) -> 
     gen_server:start_link({local,Name},?MODULE, {},[] ).
-send( ServerRef,Player,Data ) ->
-	erlang:send(ServerRef, {send,Player,Data}).
+send( ServerRef,Sockets,Player,Data ) ->
+	erlang:send(ServerRef, {send,Sockets,Player,Data}).
 stop(ServerRef)  -> 
-    gen_server:cast(ServerRef,stop).
+	erlang:send( ServerRef,stop ).
 
 %% ====================================================================
 %% Behavioural functions 
@@ -77,8 +77,8 @@ handle_call(_Request, _From, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast(stop,State) ->
-	{stop, exit, State};
+handle_cast({stop,Reason},State) ->
+	{stop, Reason, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -94,13 +94,16 @@ handle_cast(_Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info( {send,Player,Data} ,State) ->
+handle_info( {send,Sockets,Player,Data} ,State) ->
 	Zone = Player#player.zone,
 	UserName = Player#player.name,
-	Table = common_name:get_name( table, Zone),
 	Package=[ lists:concat(  [ Zone,"->",UserName,": ",Data]) ] ,
-	ets_handler:foreach_key( Table , fun(Socket) -> gen_tcp:send(Socket, Package) end),
+	lists:foreach(  fun( {Socket} ) -> gen_tcp:send(Socket, Package) end  ,   Sockets),
     {noreply, State};
+handle_info(stop,State) ->
+	{stop,normal, State};
+handle_info({stop,Reason},State) ->
+	{stop,Reason, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 

@@ -6,7 +6,7 @@
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -define(CHAT_TAB_SUP,chat_tab_sup).
--define(CHAT_TAB_SERVER,chat_tab_server).
+%%-define(CHAT_TAB_SERVER,chat_tab_server).
 -define(SEND_CLIENT_SUP,send_client_sup).
 -define(SEND_CLIENT_SERVER,send_client_server).
 
@@ -64,7 +64,8 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
--record(state, {table_pids}).
+-record(state, { table }).
+-record(player, {name,zone="world",time=none}).
 % -record(player, {name,zone="world",time=none}).
 
 %% init/1
@@ -80,18 +81,17 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init( Channels ) ->
-	TablePids = create_tab_server( Channels,[]),
-    {ok, #state{table_pids = TablePids}}.
+	Tables = create_tab( Channels,[]),
+    {ok, #state{table = Tables}}.
 
-create_tab_server( [],TablePids ) ->
-	TablePids;
-create_tab_server(Channels,TablePids) ->
+create_tab( [],Tables ) ->
+	Tables;
+create_tab(Channels, Tables) ->
 	[ {channel,Zone,_Public, _Timeout} | Others ] = Channels,
 	%% 产生表进程的名字和表的名字
-	TablePid = common_name:get_name(table_pid, Zone),
 	Table = common_name:get_name(table, Zone),
-	supervisor:start_child(?CHAT_TAB_SUP, [TablePid,Table]),
-	create_tab_server(Others,[TablePid | TablePids]).
+	ets:new( Table,  [set,protected,named_table]),
+	create_tab(Others,    [ Table | Tables ] ).
 
 %% handle_call/3
 %% ====================================================================
@@ -141,39 +141,53 @@ handle_cast(_Msg, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info(  {send,Socket, Player, Data} ,  State) ->
+	Zone = Player#player.zone,
+	Table = common_name:get_name(table, Zone),
+	Sockets = ets:tab2list( Table ),
 	SendRegName = common_name:get_name(  send_socket,Socket ),
 	case erlang:whereis(  SendRegName ) of
 		undefined ->
 			supervisor:start_child(?SEND_CLIENT_SUP, [SendRegName] ),
-			?SEND_CLIENT_SERVER:send( SendRegName , Player, Data);
+			?SEND_CLIENT_SERVER:send( SendRegName , Sockets,Player, Data);
 		_ ->
-			?SEND_CLIENT_SERVER:send( SendRegName , Player, Data)
+			?SEND_CLIENT_SERVER:send( SendRegName , Sockets,Player, Data)
 	end,
     {noreply, State};
 handle_info( {add,Zone,Socket},  State ) ->
-	TablePid = common_name:get_name(table_pid, Zone),
-	?CHAT_TAB_SERVER:add_record( TablePid,{Socket} ),
+	Table = common_name:get_name(table, Zone),
+	ets:insert( Table, {Socket} ),
 	{noreply, State};
 handle_info( {del,Zone,Socket},  State ) ->
-	TablePid = common_name:get_name(table_pid, Zone),
-	?CHAT_TAB_SERVER:del_record( TablePid,Socket ),
+	Table = common_name:get_name(table, Zone),
+	ets:delete(Table, Socket),
 	{noreply, State};
 handle_info( {remove_record,Socket},State ) ->
-	TablePids = State#state.table_pids,
+	File = "D:\\tt\\chat_send_server.txt",
+	catch(  file:delete(File) ),
+	{ ok,S }= file:open(File, [  append ]),
+	io:format(  S , "~p ~p~n",   [ time(),Socket]),
+	file:close( S ),
+	
+	Tables = State#state.table,
 	%%在每个ets表上删除记录
-	do_remove_record(TablePids,Socket),
+	do_remove_record(Tables,Socket),
 	%%关闭进程
-	SendRegName = common_name:get_name(  send_socket,Socket ),
-	?SEND_CLIENT_SERVER:stop( SendRegName),
+	SendRegName = common_name:get_name(  send_socket, Socket ),
+	case erlang:whereis(SendRegName) of 
+		 undefined ->
+			 ok;
+		_ ->
+			?SEND_CLIENT_SERVER:stop( SendRegName)
+	end,
 	{noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
 do_remove_record([],Socket) ->
 	{removed,Socket};
-do_remove_record(TablePids,Socket) ->
-	[TablePid | Others] = TablePids,
-	?CHAT_TAB_SERVER:del_record( TablePid,Socket ),
+do_remove_record(Tables,Socket) ->
+	[Table | Others] = Tables,
+	ets:delete(Table, Socket),
 	do_remove_record(Others,Socket).
 
 %% terminate/2

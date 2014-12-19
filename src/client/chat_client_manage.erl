@@ -38,7 +38,7 @@ do_start_manage(Number,Typeth) ->
 	%% Typeth 表示第Typeth种
 	%% spawn(?MODULE,manage_client,[ Number,Typeth ]),
 	spawn( fun() -> manage_client(  Number,Typeth )  end),
-	timer:sleep(20),
+	timer:sleep(2500),
 	do_start_manage(Number,Typeth -1).
 
 

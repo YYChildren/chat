@@ -36,9 +36,9 @@ start_link(Args) ->
 init([]) ->
     Client = {
 			  	?SEND_CLIENT_SERVER, {?SEND_CLIENT_SERVER, start_link, []}, 
-           		transient, brutal_kill, worker, [call]
+           		transient, brutal_kill, worker, [  ?SEND_CLIENT_SERVER ]
 			 },
-    {ok,{{simple_one_for_one,0,1}, [Client]}}.
+    {ok,{{simple_one_for_one,1,1}, [Client]}}.
 
 %% ====================================================================
 %% Internal functions

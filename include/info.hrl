@@ -8,3 +8,4 @@
 -define(MSG_SERVER,msg_server).
 -define(LOGIN_TAG,"bG9naW4=").
 -define(SWITCH_TAG,"c3dpdGNo").
+-record(player, {name,zone="world",time=none}).

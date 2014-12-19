@@ -40,6 +40,10 @@ connect(ServerRef, Socket ) ->
 	erlang:send(ServerRef, {connect,Socket}).
 
 disconnect(ServerRef,Socket) ->
+	File = "D:\\tt\\chat_server3_disconnect..txt",
+	{ ok,S }= file:open(File, [  append ]),
+	io:format(  S , "~p ~p ~p~n",   [ time(),Socket, ServerRef]),
+	file:close( S ),
 	erlang:send(ServerRef, {disconnect,Socket}).
 
 
@@ -56,6 +60,7 @@ init( [] ) ->
 	%% 启动数据库
 	chat_db:start(),
 	%%维护队列
+	erase(),
 	ets:new(user_in_mem,[set,public,named_table]),
 	State = #state{ table=user_in_mem},
     {ok,State}.
@@ -80,14 +85,24 @@ handle_info({connect,Socket},State) ->
 	ets:insert( Tab, {Socket,null} ),
 	{noreply, State};
 handle_info({disconnect,Socket},State) ->
+	File = "D:\\tt\\chat_server3.txt",
+	{ ok,S }= file:open(File, [  append ]),
+	io:format(  S , "~p ~p~n",   [ time(),Socket]),
+	file:close( S ),
 	Tab = State#state.table,
 	ets:delete(Tab, Socket),
 	?CHAT_SEND_SERVER:remove_record(?CHAT_SEND_SERVER, Socket),
 	{noreply, State};
 handle_info(_Info,State) ->
+	io:format("chat  server Format: ~p~n",[_Info]),
+	
     {noreply,State}.
 
 terminate(_Reason,_State) ->
+	File = "D:\\tt\\chat_server3_stop.txt",
+	{ ok,S }= file:open(File, [  append ]),
+	io:format(  S , "~p ~p~n",   [ time(),stop]),
+	file:close( S ),
     ok.
 
 code_change(_OldVsn,State,_) ->
@@ -97,12 +112,10 @@ code_change(_OldVsn,State,_) ->
 %% -------------私有函数--------------
 %% -----------------------------------
 chat_client(State,Socket,Data) ->
-		io:format("chat_client~n"),
 		TableID = State#state.table,
         case ets:lookup(TableID,Socket) of
 			[{Socket,null}]	->
 				Login = string:substr(Data, 1,8),
-				io:format("~p login tag: ~p~n", [ ?MODULE,Login] ),
 				case Login of
 					%% 登录标记段
 					?LOGIN_TAG	->
@@ -140,7 +153,7 @@ chat_client(State,Socket,Data) ->
 							send_data( TableID, Socket,Player1,Data )
  				end;
 			_	->
-				io:format("Format")
+				ignore
         end.
 			
 %% 登录或注册
@@ -180,14 +193,13 @@ switch_channel(TableID,Socket,Player1,Zone) ->
 	end.
 
 send_data( TableID, Socket,Player,Data ) ->
-	io:format("~tp~n", [Data]),
     [{channel,_Zone,_Public,Time}] = chat_channel_manage:load_channel(Player#player.zone),
     case  ( Lest = time_handler:timestamp() - Player#player.time ) >= Time of
         true ->
             %% 插入最后发言时间
             Player1 = Player#player{ time=time_handler:timestamp() } ,
             ets:insert( TableID,{Socket,Player1} ),
-			io:format("insert time ~n~n"),
+			io:format("------------------------------------------~n~n"),
 			%%
 			%% 把消息发给  群发进程
             ?CHAT_SEND_SERVER:send( ?CHAT_SEND_SERVER,Socket, Player, Data );

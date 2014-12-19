@@ -13,12 +13,12 @@
 -define(OPTIONS, [ named_table, protected,set ] ).
 
 start_link( ProName,TabName ) ->
-	io:format("~p ~p ~n", [?MODULE ,?LINE ]),
 	gen_server:start_link({local,ProName},?MODULE,  TabName, []).
 add_record( ServerRef,Record ) ->
 	erlang:send( ServerRef, {add,Record} ).
 del_record(ServerRef,Key)	->
 	erlang:send( ServerRef, { del,Key } ).
+
 
 
 

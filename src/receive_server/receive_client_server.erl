@@ -12,7 +12,6 @@
 %% Internal functions
 %% ====================================================================
 receive_msg( Socket,ClientName ) ->
-	io:format("~p ~p~n", [ ?MODULE,?LINE]),
 	register(ClientName, spawn_link( fun() -> do_receive_msg(Socket) end) ).
 do_receive_msg(Socket) ->
     case gen_tcp:recv(Socket, 0) of
@@ -21,7 +20,11 @@ do_receive_msg(Socket) ->
 			?CHAT_SERVER:send(Socket,Data),
 			do_receive_msg(Socket);
         {error, Why} ->
-			io:format("Reason: ~p~n~n",[Why]),
+			File = "D:\\tt\\receive_client_server3_disconnect..txt",
+			catch(  file:delete(File) ),
+			{ ok,S }= file:open(File, [  append ]),
+			io:format(  S , "~p ~p ~p~n",   [ time(),Socket,Why]),
+			file:close( S ),
 			?CHAT_SERVER:disconnect(Socket)
     end.
 
