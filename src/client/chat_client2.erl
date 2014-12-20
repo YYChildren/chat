@@ -19,6 +19,7 @@ start(Ip,Port,UserName,PassWord,Type) ->
 	case do_connect(Ip,Port) of
 		%% 连接成功
 		{ok,Socket}	->
+			timer:sleep(10000),
 			output(" connected!"),
 			do_login(Socket,UserName,PassWord),
 			
@@ -54,10 +55,10 @@ do_chat(Socket,Type,Size) ->
 			end,
 	output(Type1),
 	
-	switch_channel(Socket, erlang:element(Type1, ?ZONE)),
+	%%switch_channel(Socket, erlang:element(Type1, ?ZONE)),
 	%% 并发进程导致ets的tab_to_list有不同备份
 	timer:sleep(10000),
-	send_msg(Socket,   binary_to_list( unicode:characters_to_binary(  "中文" ) )),
+	send_msg(Socket,   binary_to_list( unicode:characters_to_binary(  "msg" ) )),
 	do_chat(Socket,Type1 + 1,Size).
 	
 switch_channel(Socket,Channel) ->

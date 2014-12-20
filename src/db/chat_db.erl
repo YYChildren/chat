@@ -6,6 +6,7 @@
 
 -record(user, {username, password}).
 -record(channel,{zone,public,timeout}).
+-record(chat_info,{ username,zone,time }).
 
 do_this_once() ->
     mnesia:create_schema([erlang:node()]),

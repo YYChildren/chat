@@ -30,6 +30,10 @@ accept(AcceptProName,Port,TcpOptions)->
             exit({stop, exit}) 
     end.
 do_accept(LSocket) ->
+	%%设成系统进程，不让子进程关闭
+    erlang:process_flag(trap_exit, true),
+	do( LSocket ).
+do( LSocket ) ->
     case gen_tcp:accept(LSocket) of
         {ok, Socket} -> 
             %%创建进程处理响应
@@ -41,4 +45,4 @@ do_accept(LSocket) ->
         _ ->
             ok
     end,
-	do_accept(LSocket). 
+	do(LSocket). 

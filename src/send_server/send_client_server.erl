@@ -9,13 +9,13 @@
 %% ====================================================================
 %% API functions   Socket和Player应该不用
 %% ====================================================================
--export([start_link/1,send/4,stop/1]).
+-export([start_link/1,send/5,stop/1]).
 
 
 start_link( Name ) -> 
     gen_server:start_link({local,Name},?MODULE, {},[] ).
-send( ServerRef,Sockets,Player,Data ) ->
-	erlang:send(ServerRef, {send,Sockets,Player,Data}).
+send( ServerRef,Set,Playername,Zone,Data ) ->
+	erlang:send(ServerRef, {send,Set,Playername,Zone,Data}).
 stop(ServerRef)  -> 
 	erlang:send( ServerRef,stop ).
 
@@ -94,11 +94,10 @@ handle_cast(_Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info( {send,Sockets,Player,Data} ,State) ->
-	Zone = Player#player.zone,
-	UserName = Player#player.name,
-	Package=[ lists:concat(  [ Zone,"->",UserName,": ",Data]) ] ,
-	lists:foreach(  fun( {Socket} ) -> gen_tcp:send(Socket, Package) end  ,   Sockets),
+handle_info( {send,Set,Playername,Zone,Data} ,State) ->
+	Package=[ lists:concat(  [ Zone,"->",Playername,": ",Data]) ] ,
+	Sockets = sets:to_list(Set),
+	lists:foreach(  fun( Socket ) -> gen_tcp:send(Socket, Package) end  ,   Sockets),
     {noreply, State};
 handle_info(stop,State) ->
 	{stop,normal, State};

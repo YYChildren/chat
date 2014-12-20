@@ -34,6 +34,8 @@ start_link(Args) ->
 	Modules :: [module()] | dynamic.
 %% ====================================================================
 init([]) ->
+	%%设成系统进程，不让子进程关闭
+    erlang:process_flag(trap_exit, true),
     Client = {
 			  	?SEND_CLIENT_SERVER, {?SEND_CLIENT_SERVER, start_link, []}, 
            		transient, brutal_kill, worker, [  ?SEND_CLIENT_SERVER ]

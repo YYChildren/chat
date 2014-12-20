@@ -20,7 +20,7 @@ get_name(name_pid,Name) ->
 get_name(table,Name) ->
 	erlang:list_to_atom( string:concat(Name, "_tab") );
 get_name(table_pid,Name) ->
-	erlang:list_to_atom( string:concat(Name, "_tab_pid")  );
+	erlang:list_to_atom( string:concat(Name, "_tab_pid") );
 get_name(send_socket,Socket ) ->
 	get_name( name_pid, string:concat( "send",erlang:port_to_list( Socket) ) );
 get_name(client_socket,Socket) ->

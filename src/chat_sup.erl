@@ -64,12 +64,7 @@ init([]) ->
 	    10000, 
 	    supervisor, 
 	    [send_client_sup]},
-	ChatTabSupervisor ={chat_tab_sup, 
-	    {chat_tab_sup, start_link, [ [] ]},
-	    permanent, 
-	    10000, 
-	    supervisor, 
-	    [chat_tab_sup]},
+	
 	SendServer = {chat_send_server, 
 	    {chat_send_server, start, [ chat_send_server ]},
 	    permanent, 
@@ -87,7 +82,6 @@ init([]) ->
 		  [ChatServer,
 		   ReceiveClientSupervisor,
 		   SendClientSupervisor,
-		   ChatTabSupervisor,
 		   SendServer,
 		   AcceptClient
 		  ]}}.

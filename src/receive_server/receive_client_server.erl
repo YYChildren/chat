@@ -20,11 +20,7 @@ do_receive_msg(Socket) ->
 			?CHAT_SERVER:send(Socket,Data),
 			do_receive_msg(Socket);
         {error, Why} ->
-			File = "D:\\tt\\receive_client_server3_disconnect..txt",
-			catch(  file:delete(File) ),
-			{ ok,S }= file:open(File, [  append ]),
-			io:format(  S , "~p ~p ~p~n",   [ time(),Socket,Why]),
-			file:close( S ),
+			io:format("~p ~p~n",[Socket,Why]),
 			?CHAT_SERVER:disconnect(Socket)
     end.
 

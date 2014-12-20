@@ -13,7 +13,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start/1,start/2,send/4,add_record/3,del_record/3,switch_channel/4,remove_record/2]).
+-export([start/1,start/2,send/5,add_record/3,del_record/3,switch_channel/4,remove_record/2]).
 
 start(Name) ->
 	Channels = chat_channel_manage:load_channel(),
@@ -21,8 +21,8 @@ start(Name) ->
 start(Name,Channels) -> 
     gen_server:start_link({local,Name},?MODULE,Channels,[]).
 
-send( ServerRef,Socket, Player, Data ) ->
-	erlang:send( ServerRef , {send,Socket, Player, Data} ).
+send( ServerRef,Socket, Playername,Zone, Data ) ->
+	erlang:send( ServerRef , {send,Socket, Playername,Zone, Data} ).
 add_record(ServerRef, Zone, Socket) ->
 	erlang:send( ServerRef , {add,Zone,Socket} ).
 del_record( ServerRef, Zone, Socket) ->
@@ -64,7 +64,7 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
--record(state, { table }).
+-record(state, {channel}).
 -record(player, {name,zone="world",time=none}).
 % -record(player, {name,zone="world",time=none}).
 
@@ -81,17 +81,19 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init( Channels ) ->
-	Tables = create_tab( Channels,[]),
-    {ok, #state{table = Tables}}.
+	%%设成系统进程，不让子进程关闭
+    erlang:process_flag(trap_exit, true),
+	create_tab( Channels),
+    {ok, #state{channel = Channels}}.
 
-create_tab( [],Tables ) ->
-	Tables;
-create_tab(Channels, Tables) ->
+create_tab( [] ) ->
+	ok;
+create_tab(Channels) ->
 	[ {channel,Zone,_Public, _Timeout} | Others ] = Channels,
 	%% 产生表进程的名字和表的名字
-	Table = common_name:get_name(table, Zone),
-	ets:new( Table,  [set,protected,named_table]),
-	create_tab(Others,    [ Table | Tables ] ).
+	Set = sets:new(),
+	put(Zone,Set),
+	create_tab(Others ).
 
 %% handle_call/3
 %% ====================================================================
@@ -140,37 +142,28 @@ handle_cast(_Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info(  {send,Socket, Player, Data} ,  State) ->
-	Zone = Player#player.zone,
-	Table = common_name:get_name(table, Zone),
-	Sockets = ets:tab2list( Table ),
+handle_info(  {send,Socket, Playername,Zone, Data} ,  State) ->
 	SendRegName = common_name:get_name(  send_socket,Socket ),
+	Set = get(Zone),
 	case erlang:whereis(  SendRegName ) of
 		undefined ->
 			supervisor:start_child(?SEND_CLIENT_SUP, [SendRegName] ),
-			?SEND_CLIENT_SERVER:send( SendRegName , Sockets,Player, Data);
+			?SEND_CLIENT_SERVER:send( SendRegName , Set, Playername,Zone, Data);
 		_ ->
-			?SEND_CLIENT_SERVER:send( SendRegName , Sockets,Player, Data)
+			?SEND_CLIENT_SERVER:send( SendRegName , Set, Playername,Zone, Data)
 	end,
     {noreply, State};
 handle_info( {add,Zone,Socket},  State ) ->
-	Table = common_name:get_name(table, Zone),
-	ets:insert( Table, {Socket} ),
+	Set = get(Zone),
+	NewSet = sets:add_element(Socket, Set),
+	put(Zone,NewSet),
 	{noreply, State};
 handle_info( {del,Zone,Socket},  State ) ->
-	Table = common_name:get_name(table, Zone),
-	ets:delete(Table, Socket),
+	Set = get(Zone),
+	NewSet = sets:del_element(Socket, Set),
+	put(Zone,NewSet),
 	{noreply, State};
 handle_info( {remove_record,Socket},State ) ->
-	File = "D:\\tt\\chat_send_server.txt",
-	catch(  file:delete(File) ),
-	{ ok,S }= file:open(File, [  append ]),
-	io:format(  S , "~p ~p~n",   [ time(),Socket]),
-	file:close( S ),
-	
-	Tables = State#state.table,
-	%%在每个ets表上删除记录
-	do_remove_record(Tables,Socket),
 	%%关闭进程
 	SendRegName = common_name:get_name(  send_socket, Socket ),
 	case erlang:whereis(SendRegName) of 
@@ -179,15 +172,23 @@ handle_info( {remove_record,Socket},State ) ->
 		_ ->
 			?SEND_CLIENT_SERVER:stop( SendRegName)
 	end,
+	do_remove_record(State#state.channel,Socket),
 	{noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
-do_remove_record([],Socket) ->
-	{removed,Socket};
-do_remove_record(Tables,Socket) ->
-	[Table | Others] = Tables,
-	ets:delete(Table, Socket),
+do_remove_record([],_Socket) ->
+	ok;
+do_remove_record(Channels,Socket) ->
+	[{  channel,Zone,_Public,_Timeout } | Others] = Channels,
+	Set = get( Zone ),
+	case sets:is_element(Socket, Set) of
+		true ->
+			NewSet = sets:del_element(Socket, Set),
+			put(Zone,NewSet);
+		false ->
+			ok
+	end,
 	do_remove_record(Others,Socket).
 
 %% terminate/2
