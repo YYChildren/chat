@@ -8,7 +8,7 @@
 %% API functions
 %% ====================================================================
 -export( [ accept/3  ] ).
--define(CHAT_SERVER,chat_server3).
+-define(CHAT_SERVER,chat_server).
 -define(RECEIVE_CLIENT_SUP,receive_client_sup).
 
 

@@ -5,7 +5,7 @@
 -module(chat_send_server).
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--define(CHAT_TAB_SUP,chat_tab_sup).
+%%-define(CHAT_TAB_SUP,chat_tab_sup).
 %%-define(CHAT_TAB_SERVER,chat_tab_server).
 -define(SEND_CLIENT_SUP,send_client_sup).
 -define(SEND_CLIENT_SERVER,send_client_server).
@@ -47,7 +47,7 @@ switch_channel( ServerRef, Socket,OldZone,Zone) ->
 							ok
 					end;
 				%% 原纪录不是public
-				_ ->
+				[ {channel,OldZone,false,_Timeout} ] ->
 					del_record( ServerRef, OldZone, Socket),
 					case chat_channel_manage:load_channel(Zone) of
 						%% 新纪录不是public

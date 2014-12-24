@@ -37,24 +37,24 @@ do_start_manage(Number,Typeth) ->
 	%%创建用户进程
 	%% Typeth 表示第Typeth种
 	%% spawn(?MODULE,manage_client,[ Number,Typeth ]),
-	spawn( fun() -> manage_client(  Number,Typeth )  end),
+	spawn( fun() -> manage_client(  Number,Typeth,  Number * (Typeth - 1) )  end),
 	timer:sleep(2500),
 	do_start_manage(Number,Typeth -1).
 
 
-manage_client(0, Typeth) ->
+manage_client(0, Typeth,Add) ->
 	output(lists:concat( ["Type: " ,Typeth ," finished" ] ));
-manage_client(Number,Typeth) ->
+manage_client(Number,Typeth,Add) ->
 	spawn( ?CLIENT, ?FUN , 
-		   [ ?IP, ?PORT, integer_to_list(Number * Typeth), integer_to_list(Number * Typeth),
+		   [ ?IP, ?PORT, integer_to_list(Number + Add), integer_to_list(Number + Add),
 			 erlang:element(Typeth, ?TYPE)] ),
 %% 	spawn( ?CLIENT, ?FUN , 
 %% 		   [ ?IP, ?PORT, integer_to_list(Number * Typeth), integer_to_list(Number * Typeth),
 %% 			 erlang:element(1, ?TYPE)] ),
 %% erlang:element(Typeth, ?TYPE)] 这是第Typeth种类型
-	output( lists:concat(["Client:",Number," Type: ", erlang:element(Typeth, ?TYPE) ]  ) ),
+	output( lists:concat(["Client:",Number + Add," Type: ", erlang:element(Typeth, ?TYPE) ]  ) ),
 	timer:sleep(10),
-	manage_client( Number - 1, Typeth ).
+	manage_client( Number - 1, Typeth,Add ).
 
 handle_call(stop,_From,Tab) ->
     {stop,normal,stopped,Tab}.

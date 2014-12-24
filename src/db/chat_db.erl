@@ -6,21 +6,24 @@
 
 -record(user, {username, password}).
 -record(channel,{zone,public,timeout}).
--record(chat_info,{ username,zone,time }).
+-record(player,{playername, current_zone, player_info}).
 
 do_this_once() ->
     mnesia:create_schema([erlang:node()]),
     mnesia:start(),
     mnesia:create_table(user,   [{attributes, record_info(fields, user)},{disc_copies, [erlang:node()]} ]),
     mnesia:create_table(channel,   [{attributes, record_info(fields, channel)},{disc_copies, [erlang:node()]} ]),
+	mnesia:create_table(player,   [{attributes, record_info(fields, player)},{disc_copies, [erlang:node()]} ]),
     %% 初始化频道信息
     init_channel(),
+	init_user(),
     mnesia:stop().
 
 start() ->
     mnesia:start(),
     mnesia:wait_for_tables([user], 20000),
     mnesia:wait_for_tables([channel], 20000),
+	mnesia:wait_for_tables([ player], 20000),
 	io:format("~p Database is started!~n",[?MODULE]).
 
 stop() ->
@@ -28,6 +31,22 @@ stop() ->
 
 
 
+insert(Record) ->
+	F = fun() ->
+				mnesia:write(Record)
+		end,
+	mnesia:transaction(F).
+insert_all(ListRecord) ->
+	F = fun() ->
+        foreach(fun mnesia:write/1, ListRecord)
+    end,
+    mnesia:transaction(F).
+	
+select_player() ->
+	do(qlc:q([X || X <- mnesia:table(player)])).
+select_player( Playername ) ->
+	do(qlc:q([X || X <- mnesia:read(player, Playername)
+        ])).
 
 demo(select_channel)->
     do(qlc:q([X || X <- mnesia:table(channel)]));
@@ -35,13 +54,15 @@ demo(select_user) ->
     do(qlc:q([X || X <- mnesia:table(user)])).
 
 demo(select_channel,Zone)->
-    do(qlc:q([X || X <- mnesia:table(channel),
-                    X#channel.zone =:= Zone
+    do(qlc:q([X || X <- mnesia:read(channel, Zone)
         ]));
 demo(select_user,UserName) ->
-    do(qlc:q([X || X <- mnesia:table(user),
-                    X#user.username =:=  UserName 
+    do(qlc:q([X || X <- mnesia:read(user, UserName) 
         ])).
+%% demo(select_user,UserName) ->
+%%     do(qlc:q([X || X <- mnesia:table(user),
+%%                     X#user.username =:=  UserName 
+%%         ])).
 %% demo( Tab ,Fields,Value ) ->
 %% 	do(qlc:q([X || X <- mnesia:table(Tab),
 %%                     X#Tab.Fields =:=  Value 
@@ -53,6 +74,7 @@ do(Q) ->
     F = fun() -> qlc:e(Q) end,
     {atomic, Val} = mnesia:transaction(F),
     Val.
+
 
 add_user(UserName, Password) ->
     Row = #user{username=UserName, password=Password},

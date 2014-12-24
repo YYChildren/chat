@@ -19,7 +19,7 @@ start(Ip,Port,UserName,PassWord,Type) ->
 	case do_connect(Ip,Port) of
 		%% 连接成功
 		{ok,Socket}	->
-			timer:sleep(10000),
+			timer:sleep(12000),
 			output(" connected!"),
 			do_login(Socket,UserName,PassWord),
 			
@@ -55,10 +55,10 @@ do_chat(Socket,Type,Size) ->
 			end,
 	output(Type1),
 	
-	%%switch_channel(Socket, erlang:element(Type1, ?ZONE)),
+	%% switch_channel(Socket, erlang:element(Type1, ?ZONE)),
 	%% 并发进程导致ets的tab_to_list有不同备份
 	timer:sleep(10000),
-	send_msg(Socket,   binary_to_list( unicode:characters_to_binary(  "msg" ) )),
+	send_msg(Socket,   binary_to_list( unicode:characters_to_binary(  "1234" ) )),
 	do_chat(Socket,Type1 + 1,Size).
 	
 switch_channel(Socket,Channel) ->
@@ -78,10 +78,12 @@ do_login(Socket,UserName,PassWord) ->
 	output(lists:concat( ["bG9naW4=",UserName," ",PassWord]) ).
 
 output(Msg) ->
-	io:format("~p Msg: ~p~n",[?MODULE,Msg]).
+	ok.
+	%%io:format("~p Msg: ~p~n",[?MODULE,Msg]).
 
 outputServerMsg(Msg) ->
-	io:format("~p Msg From Server: ~tp~n",[?MODULE,Msg]).
+	ok.
+	%%io:format("~p Msg From Server: ~tp~n",[?MODULE,Msg]).
 
 send_msg(Socket,Msg) ->
 	gen_tcp:send(Socket, Msg ).

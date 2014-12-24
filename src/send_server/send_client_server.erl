@@ -11,7 +11,6 @@
 %% ====================================================================
 -export([start_link/1,send/5,stop/1]).
 
-
 start_link( Name ) -> 
     gen_server:start_link({local,Name},?MODULE, {},[] ).
 send( ServerRef,Set,Playername,Zone,Data ) ->
@@ -95,9 +94,20 @@ handle_cast(_Msg, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info( {send,Set,Playername,Zone,Data} ,State) ->
-	Package=[ lists:concat(  [ Zone,"->",Playername,": ",Data]) ] ,
+	Packet=[ lists:concat(  [ Zone,"->",Playername,": ",Data]) ] ,
 	Sockets = sets:to_list(Set),
-	lists:foreach(  fun( Socket ) -> gen_tcp:send(Socket, Package) end  ,   Sockets),
+%% 	Fun = fun( Socket ) when is_port(Socket) -> 
+%% 				  case erlang:port_info(Socket) of
+%% 					  undefined ->
+%% 						  ignore;
+%% 					  _ ->
+%% 				  		gen_tcp:send(Socket, Package)
+%% 				  end
+%% 		  end,
+%% 	Fun = fun(Socket) -> 
+%% 				  catch(port_command(Socket, Packet, [ force ])) end,
+	Fun =  fun(Socket) -> gen_tcp:send(Socket, Packet)  end,
+	lists:foreach(Fun,   Sockets),
     {noreply, State};
 handle_info(stop,State) ->
 	{stop,normal, State};

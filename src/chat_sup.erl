@@ -4,10 +4,11 @@
 
 -module(chat_sup).
 -behaviour(supervisor).
--include("info.hrl").
+%-include("info.hrl").
 -export([init/1]).
 -define(PORT,8080).
 -define(TCP_OPTIONS, [list, {packet, 4}, {active, false}, {reuseaddr, true},{nodelay, false},{delay_send, true}]).  
+-define(CHAT_SERVER,chat_server).
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -45,12 +46,12 @@ start_link(Args) ->
 	Modules :: [module()] | dynamic.
 %% ====================================================================
 init([]) ->
-    ChatServer ={chat_server3, 
-	    {chat_server3, start, [ chat_server3 ]},
+    ChatServer ={?CHAT_SERVER, 
+	    {?CHAT_SERVER, start, [ ?CHAT_SERVER ]},
 	    permanent, 
 	    10000, 
 	    worker, 
-	    [chat_server3]},
+	    [?CHAT_SERVER]},
 	ReceiveClientSupervisor ={receive_client_sup,
 							  %% 必须传入一个参数 
 	    {receive_client_sup, start_link, [  [] ]},
